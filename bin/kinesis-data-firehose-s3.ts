@@ -1,21 +1,26 @@
 #!/usr/bin/env node
-import 'source-map-support/register';
-import * as cdk from '@aws-cdk/core';
-import { KinesisDataFirehoseS3Stack } from '../lib/kinesis-data-firehose-s3-stack';
+import * as cdk from "@aws-cdk/core";
+import * as dotenv from "dotenv";
+import { get } from "env-var";
+import "source-map-support/register";
+import { KinesisDataFirehoseS3Stack } from "../lib/kinesis-data-firehose-s3-stack";
 
 const app = new cdk.App();
-new KinesisDataFirehoseS3Stack(app, 'KinesisDataFirehoseS3Stack', {
-  /* If you don't specify 'env', this stack will be environment-agnostic.
-   * Account/Region-dependent features and context lookups will not work,
-   * but a single synthesized template can be deployed anywhere. */
 
-  /* Uncomment the next line to specialize this stack for the AWS Account
-   * and Region that are implied by the current CLI configuration. */
-  // env: { account: process.env.CDK_DEFAULT_ACCOUNT, region: process.env.CDK_DEFAULT_REGION },
+const { error } = dotenv.config({
+  path: ".env",
+});
 
-  /* Uncomment the next line if you know exactly what Account and Region you
-   * want to deploy the stack to. */
-  // env: { account: '123456789012', region: 'us-east-1' },
+if (error) {
+  throw new Error("Make sure you create a `.env` file");
+}
 
-  /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+const CDK_DEFAULT_ACCOUNT = get("CDK_DEFAULT_ACCOUNT").required().asString();
+const CDK_DEFAULT_REGION = get("CDK_DEFAULT_REGION").required().asString();
+
+new KinesisDataFirehoseS3Stack(app, "kinesis-data-firehose-s3", {
+  env: {
+    account: CDK_DEFAULT_ACCOUNT,
+    region: CDK_DEFAULT_REGION,
+  },
 });
