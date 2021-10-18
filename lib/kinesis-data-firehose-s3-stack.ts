@@ -22,9 +22,13 @@ export class KinesisDataFirehoseS3Stack extends cdk.Stack {
     const s3Destination = new destinations.S3Bucket(s3DestinationBucket, {
       logging: true,
       logGroup: s3DestinationLogGroup,
-      bufferingInterval: cdk.Duration.minutes(10),
-      bufferingSize: cdk.Size.mebibytes(8),
-      compression: undefined, // NONE
+      bufferingInterval: cdk.Duration.seconds(60),
+      bufferingSize: cdk.Size.mebibytes(64),
+      compression: undefined,
+      dataOutputPrefix:
+        "user/!{partitionKeyFromQuery:userId}/order/!{partitionKeyFromQuery:orderId}/!{timestamp:yyyy}/!{timestamp:MM}/!{timestamp:dd}/!{timestamp:HH}/",
+      errorOutputPrefix:
+        "failed/!{firehose:error-output-type}/!{timestamp:yyyy}/!{timestamp:MM}/!{timestamp:dd}/!{timestamp:HH}/",
     });
 
     const s3DeliveryStream = new kinesisfirehose.DeliveryStream(
@@ -34,6 +38,43 @@ export class KinesisDataFirehoseS3Stack extends cdk.Stack {
         destinations: [s3Destination],
       }
     );
+
+    const s3DeliveryStreamEscapeHatch = s3DeliveryStream.node
+      .defaultChild as kinesisfirehose.CfnDeliveryStream;
+
+    s3DeliveryStreamEscapeHatch.addPropertyOverride(
+      "ExtendedS3DestinationConfiguration.DynamicPartitioningConfiguration",
+      {
+        Enabled: true,
+        RetryOptions: {
+          DurationInSeconds: 300,
+        },
+      }
+    );
+
+    s3DeliveryStreamEscapeHatch.addPropertyOverride(
+      "ExtendedS3DestinationConfiguration.ProcessingConfiguration",
+      {
+        Enabled: true,
+        Processors: [
+          {
+            Type: "MetadataExtraction",
+            Parameters: [
+              {
+                ParameterName: "MetadataExtractionQuery",
+                ParameterValue: "{userId:.userId,orderId:.orderId}",
+              },
+              {
+                ParameterName: "JsonParsingEngine",
+                ParameterValue: "JQ-1.6",
+              },
+            ],
+          },
+        ],
+      }
+    );
+
+    // ProcessingConfiguration
 
     const putEventsFunction = new lambdanodejs.NodejsFunction(
       this,

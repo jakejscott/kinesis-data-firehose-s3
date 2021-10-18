@@ -3,6 +3,7 @@ import { Firehose, _Record } from "@aws-sdk/client-firehose";
 import { get } from "env-var";
 
 export type PutEventPayload = {
+  userId: string;
   orderId: string;
 };
 
