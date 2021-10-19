@@ -18,6 +18,13 @@ export class KinesisDataFirehoseS3Stack extends cdk.Stack {
 
     const s3DestinationBucket = new s3.Bucket(this, "S3DestinationBucket", {
       versioned: true,
+      publicReadAccess: false,
+      blockPublicAccess: {
+        blockPublicAcls: true,
+        blockPublicPolicy: true,
+        ignorePublicAcls: true,
+        restrictPublicBuckets: true,
+      },
     });
 
     const s3DestinationLogGroup = new logs.LogGroup(
@@ -32,7 +39,7 @@ export class KinesisDataFirehoseS3Stack extends cdk.Stack {
       bufferingSize: cdk.Size.mebibytes(64),
       compression: undefined,
       dataOutputPrefix:
-        "userid=!{partitionKeyFromQuery:userid}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/",
+        "user=!{partitionKeyFromQuery:userid}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/",
       errorOutputPrefix:
         "failed/!{firehose:error-output-type}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/",
     });

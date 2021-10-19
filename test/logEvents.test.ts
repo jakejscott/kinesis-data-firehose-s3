@@ -36,13 +36,13 @@ describe("logEvents lambda", () => {
     const functionName = (outputs as any)["kinesis-data-firehose-s3"]
       .LogEventsFunctionName;
 
-    const { LogResult } = await lambda.invoke({
+    const { StatusCode } = await lambda.invoke({
       FunctionName: functionName,
       Payload: Buffer.from(JSON.stringify(event)),
       LogType: LogType.Tail,
     });
 
-    console.log("logs: \n", LogResult);
+    console.log("Success code", StatusCode);
 
     const context = fakeContext();
     await handler(event, context, fakeCallback);
