@@ -33,8 +33,11 @@ describe("logEvents lambda", () => {
       ],
     };
 
+    const functionName = (outputs as any)["kinesis-data-firehose-s3"]
+      .LogEventsFunctionName;
+
     const { LogResult } = await lambda.invoke({
-      FunctionName: outputs["kinesis-data-firehose-s3"].LogEventsFunctionName,
+      FunctionName: functionName,
       Payload: Buffer.from(JSON.stringify(event)),
       LogType: LogType.Tail,
     });

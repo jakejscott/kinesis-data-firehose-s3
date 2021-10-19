@@ -32,7 +32,7 @@ export class KinesisDataFirehoseS3Stack extends cdk.Stack {
       bufferingSize: cdk.Size.mebibytes(64),
       compression: undefined,
       dataOutputPrefix:
-        "user=!{partitionKeyFromQuery:userId}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/",
+        "userid=!{partitionKeyFromQuery:userid}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/",
       errorOutputPrefix:
         "failed/!{firehose:error-output-type}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/",
     });
@@ -68,7 +68,7 @@ export class KinesisDataFirehoseS3Stack extends cdk.Stack {
             Parameters: [
               {
                 ParameterName: "MetadataExtractionQuery",
-                ParameterValue: "{userId:.userId}",
+                ParameterValue: "{userid:.userId}",
               },
               {
                 ParameterName: "JsonParsingEngine",
