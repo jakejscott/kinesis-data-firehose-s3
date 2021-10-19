@@ -1,14 +1,13 @@
-# Welcome to your CDK TypeScript project!
+# kinesis-data-firehose-s3
 
-This is a blank project for TypeScript development with CDK.
+CDK stack showing you how to setup dynamic partitioning with kinesis data firehose and s3.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+[logEvent lambda] -> logs to -> [cloudwatch] -> cloudwatch logs filter -> [cloudwatchToFirehose lambda] -> [kinesis firehose]
 
-## Useful commands
+Add a .env file
 
- * `npm run build`   compile typescript to js
- * `npm run watch`   watch for changes and compile
- * `npm run test`    perform the jest unit tests
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk synth`       emits the synthesized CloudFormation template
+```
+CDK_DEFAULT_ACCOUNT=xxx
+CDK_DEFAULT_REGION=xxx
+AWS_PROFILE=xxx
+```

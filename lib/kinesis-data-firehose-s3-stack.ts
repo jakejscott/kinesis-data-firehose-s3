@@ -3,12 +3,18 @@ import * as destinations from "@aws-cdk/aws-kinesisfirehose-destinations";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as lambdanodejs from "@aws-cdk/aws-lambda-nodejs";
 import * as logs from "@aws-cdk/aws-logs";
+import * as logsdestinations from "@aws-cdk/aws-logs-destinations";
 import * as s3 from "@aws-cdk/aws-s3";
 import * as cdk from "@aws-cdk/core";
+import { CfnOutput } from "@aws-cdk/core";
 
 export class KinesisDataFirehoseS3Stack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    //
+    // logEvent lambda logs to -> cloudwatch -> cloudwatch logs filter -> cloudwatchToFirehose lambda -> kinesis firehose
+    //
 
     const s3DestinationBucket = new s3.Bucket(this, "S3DestinationBucket", {
       versioned: true,
@@ -26,9 +32,9 @@ export class KinesisDataFirehoseS3Stack extends cdk.Stack {
       bufferingSize: cdk.Size.mebibytes(64),
       compression: undefined,
       dataOutputPrefix:
-        "user/!{partitionKeyFromQuery:userId}/order/!{partitionKeyFromQuery:orderId}/!{timestamp:yyyy}/!{timestamp:MM}/!{timestamp:dd}/!{timestamp:HH}/",
+        "user=!{partitionKeyFromQuery:userId}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/",
       errorOutputPrefix:
-        "failed/!{firehose:error-output-type}/!{timestamp:yyyy}/!{timestamp:MM}/!{timestamp:dd}/!{timestamp:HH}/",
+        "failed/!{firehose:error-output-type}/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/",
     });
 
     const s3DeliveryStream = new kinesisfirehose.DeliveryStream(
@@ -62,7 +68,7 @@ export class KinesisDataFirehoseS3Stack extends cdk.Stack {
             Parameters: [
               {
                 ParameterName: "MetadataExtractionQuery",
-                ParameterValue: "{userId:.userId,orderId:.orderId}",
+                ParameterValue: "{userId:.userId}",
               },
               {
                 ParameterName: "JsonParsingEngine",
@@ -74,15 +80,13 @@ export class KinesisDataFirehoseS3Stack extends cdk.Stack {
       }
     );
 
-    // ProcessingConfiguration
-
-    const putEventsFunction = new lambdanodejs.NodejsFunction(
+    const cloudwatchToFirehoseFunction = new lambdanodejs.NodejsFunction(
       this,
-      "PutEventsFunction",
+      "CloudwatchToFirehoseFunction",
       {
-        entry: "./src/putEvents.ts",
+        entry: "./src/cloudwatchToFirehose.ts",
         handler: "handler",
-        timeout: cdk.Duration.seconds(10),
+        timeout: cdk.Duration.seconds(60),
         runtime: lambda.Runtime.NODEJS_14_X,
         environment: {
           DELIVERY_STREAM_NAME: s3DeliveryStream.deliveryStreamName,
@@ -90,6 +94,33 @@ export class KinesisDataFirehoseS3Stack extends cdk.Stack {
       }
     );
 
-    s3DeliveryStream.grantPutRecords(putEventsFunction);
+    s3DeliveryStream.grantPutRecords(cloudwatchToFirehoseFunction);
+
+    const logEventsFunction = new lambdanodejs.NodejsFunction(
+      this,
+      "LogEventsFunction",
+      {
+        entry: "./src/logEvents.ts",
+        handler: "handler",
+        timeout: cdk.Duration.seconds(10),
+        runtime: lambda.Runtime.NODEJS_14_X,
+      }
+    );
+
+    logEventsFunction.logGroup.addSubscriptionFilter(
+      "LogEventsFunctionForwardToFirehose",
+      {
+        destination: new logsdestinations.LambdaDestination(
+          cloudwatchToFirehoseFunction
+        ),
+        filterPattern: {
+          logPatternString: `{ $.msg = "AUDIT" }`,
+        },
+      }
+    );
+
+    new CfnOutput(this, "LogEventsFunctionName", {
+      value: logEventsFunction.functionName,
+    });
   }
 }
